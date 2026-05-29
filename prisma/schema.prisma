@@ -1,0 +1,188 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../dev.db"
+}
+
+//////////////////////
+// ENUMS - Converted to String for SQLite compatibility
+//////////////////////
+
+//////////////////////
+// MODELS
+//////////////////////
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  consent   Boolean  @default(false) // Consent for data processing
+  anonymizedId String? @unique // Optional anonymized ID for research
+  dataRetention Boolean @default(true) // Allow data retention
+  createdAt DateTime @default(now())
+
+  assessments Assessment[]
+  moods       Mood[]
+  journals    Journal[]
+  userTasks   UserTask[]
+  insights    Insight[]
+  stats       UserStats?
+  journeys    Journey[]
+  achievements Achievement[]
+  chatMessages ChatMessage[]
+  cbtSessions  CBTSession[]
+  reflections  Reflection[]
+}
+
+model Assessment {
+  id        String   @id @default(uuid())
+  userId    String
+  score     Int
+  level     String
+  answers   String   // JSON data stored as string
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Mood {
+  id        String    @id @default(uuid())
+  userId    String
+  mood      String    // MoodType enum converted to String
+  intensity Int
+  note      String?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+model Task {
+  id        String   @id @default(uuid())
+  title     String
+  type      String   // TaskType enum converted to String
+  duration  Int
+
+  userTasks UserTask[]
+}
+
+model UserTask {
+  id        String     @id @default(uuid())
+  userId    String
+  taskId    String
+  status    String     @default("PENDING") // TaskStatus enum converted to String
+  date      DateTime
+
+  user User @relation(fields: [userId], references: [id])
+  task Task @relation(fields: [taskId], references: [id])
+
+  @@index([userId, date])
+}
+
+model Journal {
+  id        String   @id @default(uuid())
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+model Insight {
+  id        String      @id @default(uuid())
+  userId    String
+  message   String
+  type      String      // InsightType enum converted to String
+  createdAt DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+model UserStats {
+  userId         String   @id
+  streakDays     Int      @default(0)
+  totalTasksDone Int      @default(0)
+  lastActiveDate DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Achievement {
+  id          String   @id @default(uuid())
+  userId      String
+  badge       String
+  milestone   String
+  description String
+  unlockedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, unlockedAt])
+}
+
+model Journey {
+  id              String   @id @default(uuid())
+  userId          String
+  assessmentId    String
+  level           String
+  recommendedTasks String   // JSON data stored as string
+  guidelines      String
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  userId    String
+  message   String
+  role      String   // 'user' or 'assistant'
+  metadata  String?  // JSON string: risk level, safety flags, aiFallback, etc.
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+}
+
+model CBTSession {
+  id        String   @id @default(uuid())
+  userId    String
+  step      Int      @default(1) // CBT step: 1=identify stressor, 2=evidence check, 3=alternative view, 4=action plan
+  stressor  String?  // What is stressing them
+  evidence  String?  // Evidence for/against the thought
+  alternative String? // Alternative perspective
+  actionPlan String? // Action plan
+  status    String   @default("active") // active, completed, paused
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+}
+
+model Reflection {
+  id        String   @id @default(uuid())
+  userId    String
+  emotion   String   // Primary emotion identified
+  trigger   String?  // What triggered it
+  intensity Int?     // 1-10 scale
+  reflection String  // AI's reflection response
+  insights   String? // Additional insights
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+}
