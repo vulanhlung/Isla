@@ -23,25 +23,31 @@ function copyEnv() {
     envContent = fs.readFileSync(envFile, 'utf8')
   }
 
-  const hasDatabaseUrl = /^(DATABASE_URL\s*=)/m.test(envContent)
-  if (hasDatabaseUrl) {
-    console.log('Existing .env already contains DATABASE_URL, skipping copy.')
-    return
-  }
-
   const exampleContent = fs.readFileSync(envExampleFile, 'utf8')
-  const databaseUrlLine = exampleContent
-    .split(/\r?\n/)
-    .find((line) => line.trim().startsWith('DATABASE_URL'))
 
-  if (!databaseUrlLine) {
-    console.warn('.env.example does not contain DATABASE_URL, skipping env copy.')
+  if (!envContent) {
+    fs.writeFileSync(envFile, exampleContent)
+    console.log('.env created from .env.example')
     return
   }
 
-  const newContent = envContent ? `${envContent.trim()}\n${databaseUrlLine}\n` : `${databaseUrlLine}\n`
+  const missingLines = exampleContent
+    .split(/\r?\n/)
+    .filter((line) => {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('#')) return false
+      const key = trimmed.split('=')[0]?.trim()
+      return key && !new RegExp(`^${key}\\s*=`, 'm').test(envContent)
+    })
+
+  if (missingLines.length === 0) {
+    console.log('Existing .env already contains required env vars, skipping update.')
+    return
+  }
+
+  const newContent = `${envContent.trim()}\n${missingLines.join('\n')}\n`
   fs.writeFileSync(envFile, newContent)
-  console.log('.env created/updated with DATABASE_URL from .env.example')
+  console.log('.env updated with missing env vars from .env.example: ', missingLines.map(line => line.split('=')[0].trim()).join(', '))
 }
 
 copyEnv()
