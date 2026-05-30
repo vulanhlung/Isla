@@ -8,7 +8,7 @@
     "dev": "nodemon src/server.js",
     "start": "prisma migrate deploy && node src/server.js",
     "build": "npm install --prefix frontend && npm run build --prefix frontend && prisma generate",
-    "postinstall": "prisma generate"
+    "postinstall": "echo 'skipping prisma generate in postinstall'"
   },
   "keywords": [],
   "author": "",
