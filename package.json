@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon src/server.js",
+    "prestart": "node scripts/copyEnv.js",
     "start": "prisma migrate deploy && node src/server.js",
     "build": "npm install --prefix frontend && npm run build --prefix frontend && prisma generate",
     "postinstall": "echo 'skipping prisma generate in postinstall'"
