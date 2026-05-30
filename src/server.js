@@ -1,5 +1,7 @@
 import express from 'express'
 import cors from 'cors'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import userRoutes from './routes/user.routes.js'
 import moodRoutes from './routes/mood.routes.js'
 import authRoutes from './routes/auth.routes.js'
@@ -20,21 +22,33 @@ import { privacyLogger } from './middlewares/privacy.middleware.js'
 
 const app = express()
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:5173', 'http://localhost:3000']
+// __dirname không có sẵn trong ES module, phải tạo thủ công
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true)
-    if (allowedOrigins.some(o => origin.startsWith(o.trim()))) {
-      return callback(null, true)
-    }
-    return callback(new Error('Not allowed by CORS'))
-  },
-  credentials: true,
-}))
+const isProduction = process.env.NODE_ENV === 'production'
+
+// CORS — chỉ cần khi dev (production thì Express tự serve frontend)
+if (!isProduction) {
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : ['http://localhost:5173', 'http://localhost:3000']
+
+  app.use(cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true)
+      if (allowedOrigins.some(o => origin.startsWith(o.trim()))) {
+        return callback(null, true)
+      }
+      return callback(new Error('Not allowed by CORS'))
+    },
+    credentials: true,
+  }))
+} else {
+  // Production: cho phép tất cả vì cùng origin
+  app.use(cors())
+}
+
 app.use(express.json())
 
 // Public routes (no auth, no privacy log needed)
@@ -59,6 +73,18 @@ app.use('/api/dashboard', loggedAuth, dashboardRoutes)
 app.use('/api/journals', loggedAuth, journalRoutes)
 
 const PORT = process.env.PORT || 3000
+
+// Serve React frontend (production only)
+if (isProduction) {
+  const frontendDist = path.join(__dirname, '..', 'frontend', 'dist')
+  app.use(express.static(frontendDist))
+
+  // Mọi route không phải /api đều trả về index.html (React Router)
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'))
+  })
+}
+
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
+  console.log(`Server running on port ${PORT} [${isProduction ? 'production' : 'development'}]`)
 })
