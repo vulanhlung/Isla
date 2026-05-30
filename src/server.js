@@ -80,7 +80,7 @@ if (isProduction) {
   app.use(express.static(frontendDist))
 
   // Mọi route không phải /api đều trả về index.html (React Router)
-  app.get('*', (req, res) => {
+  app.get(/(.*)/, (req, res) => {
     res.sendFile(path.join(frontendDist, 'index.html'))
   })
 }
